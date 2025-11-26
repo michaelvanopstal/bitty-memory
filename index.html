@@ -657,10 +657,11 @@
         const back = document.createElement("div");
         back.classList.add("card-face", "card-back");
 
-        // Voor nu gebruiken we emoji als "plaatje"
-        const span = document.createElement("span");
-        span.textContent = card.symbol;
-        back.appendChild(span);
+         // Gebruik nu echte afbeeldingen als "plaatje"
+        const img = document.createElement("img");
+        img.src = card.symbol;           // bv. "Bablo-bicasso.png"
+        img.alt = "Bitty kaart";
+        back.appendChild(img);
 
         const glowOverlay = document.createElement("div");
         glowOverlay.classList.add("matched-overlay");
