@@ -405,6 +405,18 @@
       background: rgba(0, 0, 0, 0.45);
       font-size: 13px;
     }
+  
+    #bgVideo {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  z-index: -100; /* video volledig achter alles */
+  filter: brightness(55%) blur(2px); /* optioneel: donker & soft */
+}
+
   </style>
 </head>
 <body>
