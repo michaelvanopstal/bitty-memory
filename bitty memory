@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bitty Memory Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0b1536, #1e4f8c);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .app {
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 24px;
+      padding: 24px;
+      max-width: 1100px;
+      width: 100%;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    /* Screens */
+    #loginScreen, #gameScreen {
+      display: none;
+    }
+
+    #loginScreen.active,
+    #gameScreen.active {
+      display: block;
+    }
+
+    .login-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 10px;
+    }
+
+    .form-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    input[type="text"],
+    input[type="file"] {
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: none;
+      outline: none;
+      font-size: 14px;
+    }
+
+    .btn {
+      border: none;
+      outline: none;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 15px;
+      cursor: pointer;
+      font-weight: 600;
+      background: #ffb800;
+      color: #1c1c1c;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.2s ease;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+      background: #ffd54a;
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    }
+
+    .error {
+      color: #ff8080;
+      font-size: 13px;
+      margin-top: -4px;
+    }
+
+    /* Game layout */
+    .game-layout {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 800px) {
+      .game-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .game-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .player-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #222;
+      overflow: hidden;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .player-name {
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .stats {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: 14px;
+    }
+
+    .stat-pill {
+      background: rgba(0, 0, 0, 0.35);
+      padding: 6px 10px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stat-label {
+      opacity: 0.7;
+    }
+
+    .stat-value {
+      font-weight: 600;
+    }
+
+    .board-wrapper {
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 18px;
+      padding: 12px;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(60px, 1fr));
+      gap: 10px;
+    }
+
+    @media (max-width: 500px) {
+      .board {
+        grid-template-columns: repeat(3, minmax(60px, 1fr));
+      }
+    }
+
+    .card {
+      position: relative;
+      width: 100%;
+      padding-top: 100%; /* square */
+      border-radius: 14px;
+      cursor: pointer;
+      perspective: 1000px;
+    }
+
+    .card-inner {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      transition: transform 0.35s ease;
+      transform-style: preserve-3d;
+    }
+
+    .card.flipped .card-inner {
+      transform: rotateY(180deg);
+    }
+
+    .card-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      border-radius: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      font-weight: 700;
+    }
+
+    .card-front {
+      background: radial-gradient(circle at 20% 20%, #ffdd55, #f57f17);
+      color: #1b1300;
+    }
+
+    .card-back {
+      background: linear-gradient(145deg, #182848, #4b6cb7);
+      transform: rotateY(180deg);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      overflow: hidden;
+      font-size: 26px;
+    }
+
+    .card-back img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .card.matched .card-inner {
+      animation: glow 0.7s ease-out forwards;
+    }
+
+    @keyframes glow {
+      0% {
+        box-shadow: 0 0 0 rgba(255, 255, 255, 0);
+        transform: rotateY(180deg) scale(1);
+      }
+      50% {
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.9);
+        transform: rotateY(180deg) scale(1.05);
+      }
+      100% {
+        box-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+        transform: rotateY(180deg) scale(1.02);
+      }
+    }
+
+    .matched-overlay {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.6), transparent);
+      mix-blend-mode: screen;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .card.matched .matched-overlay {
+      opacity: 1;
+    }
+
+    /* Sidebar / high scores */
+    .sidebar {
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 18px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 420px;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .sidebar-title {
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .reset-btn {
+      font-size: 12px;
+      padding: 4px 10px;
+      box-shadow: none;
+    }
+
+    .highscore-list {
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .highscore-item {
+      display: grid;
+      grid-template-columns: 24px 36px 1fr;
+      gap: 8px;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 12px;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+
+    .highscore-rank {
+      font-weight: 600;
+      opacity: 0.9;
+    }
+
+    .highscore-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: #222;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .highscore-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .highscore-main {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .highscore-name {
+      font-weight: 600;
+    }
+
+    .highscore-meta {
+      font-size: 11px;
+      opacity: 0.8;
+    }
+
+    .tag {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      padding: 1px 6px;
+      font-size: 10px;
+      margin-left: 4px;
+    }
+
+    .message {
+      font-size: 13px;
+      margin-top: 4px;
+      opacity: 0.9;
+    }
+
+    .game-over-banner {
+      margin-top: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.45);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div>
+      <h1>Bitty Memory Game</h1>
+      <div class="subtitle">Draai de kaartjes om, vind paren en verzamel punten met Bitty de mascotte!</div>
+    </div>
+
+    <!-- LOGIN SCREEN -->
+    <section id="loginScreen" class="active">
+      <div class="login-container">
+        <div class="form-row">
+          <label for="playerName">Je naam</label>
+          <input type="text" id="playerName" placeholder="Bijv. DJ Kitty Cat" />
+          <div id="nameError" class="error" style="display:none;">Vul eerst je naam in.</div>
+        </div>
+
+        <div class="form-row">
+          <label for="playerAvatar">Je eigen plaatje / foto (optioneel)</label>
+          <input type="file" id="playerAvatar" accept="image/*" />
+        </div>
+
+        <button class="btn" id="startGameBtn">Inloggen &amp; spelen</button>
+      </div>
+    </section>
+
+    <!-- GAME SCREEN -->
+    <section id="gameScreen">
+      <div class="game-layout">
+        <!-- Left: Board -->
+        <div>
+          <div class="game-header">
+            <div class="player-info">
+              <div class="avatar" id="currentAvatar">
+                <!-- fallback letter -->
+                <span>🙂</span>
+              </div>
+              <div>
+                <div class="player-name" id="currentPlayerName"></div>
+                <div style="font-size:12px; opacity:0.8;">Welkom terug bij Bitty Memory!</div>
+              </div>
+            </div>
+
+            <div class="stats">
+              <div class="stat-pill">
+                <span class="stat-label">Score</span>
+                <span class="stat-value" id="scoreDisplay">0</span>
+              </div>
+              <div class="stat-pill">
+                <span class="stat-label">Tijd</span>
+                <span class="stat-value" id="timeDisplay">0.0 s</span>
+              </div>
+              <button class="btn reset-btn" id="restartBtn">Nieuw spel</button>
+            </div>
+          </div>
+
+          <div class="board-wrapper">
+            <div id="board" class="board"></div>
+            <div id="gameMessage" class="message"></div>
+            <div id="gameOverBanner" class="game-over-banner" style="display:none;"></div>
+          </div>
+        </div>
+
+        <!-- Right: Highscores -->
+        <aside class="sidebar">
+          <div class="sidebar-header">
+            <div class="sidebar-title">Top 10 High Scores</div>
+            <button class="btn reset-btn" id="clearScoresBtn">Reset scores</button>
+          </div>
+          <div style="font-size:12px; opacity:0.8;">
+            Rangschikking: hoogste score eerst. Bij gelijke score telt de snelste tijd.
+          </div>
+          <div id="highscoreList" class="highscore-list"></div>
+        </aside>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // ---------- CONFIG ----------
+    const PAIRS = 8;               // aantal paren (8 = 16 kaartjes)
+    const POINTS_PER_MATCH = 50;   // 50 punten per goed paar
+
+    // Demo "plaatjes". Hier kun je later Bitty-plaatjes van maken (bijv. "img/bitty1.png"...).
+    // Zorg dat elk element 2x voorkomt (paar).
+    const cardImages = [
+      "🐱", "🌟", "💎", "🔥", "🎧", "🚀", "💜", "🎮"
+    ];
+
+    // ---------- STATE ----------
+    let currentPlayer = {
+      name: "",
+      avatarDataUrl: null
+    };
+
+    let cards = [];              // deck
+    let flippedCards = [];       // momenteel omgedraaide kaarten (max 2)
+    let lockBoard = false;
+    let score = 0;
+    let startTime = null;
+    let timerInterval = null;
+    let elapsedTime = 0;         // seconden
+
+    // ---------- DOM ----------
+    const loginScreen = document.getElementById("loginScreen");
+    const gameScreen = document.getElementById("gameScreen");
+
+    const playerNameInput = document.getElementById("playerName");
+    const playerAvatarInput = document.getElementById("playerAvatar");
+    const nameError = document.getElementById("nameError");
+    const startGameBtn = document.getElementById("startGameBtn");
+
+    const boardEl = document.getElementById("board");
+    const scoreDisplay = document.getElementById("scoreDisplay");
+    const timeDisplay = document.getElementById("timeDisplay");
+    const restartBtn = document.getElementById("restartBtn");
+    const clearScoresBtn = document.getElementById("clearScoresBtn");
+    const highscoreList = document.getElementById("highscoreList");
+    const gameMessage = document.getElementById("gameMessage");
+    const gameOverBanner = document.getElementById("gameOverBanner");
+
+    const currentPlayerNameEl = document.getElementById("currentPlayerName");
+    const currentAvatarEl = document.getElementById("currentAvatar");
+
+    // ---------- HELPERS ----------
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function formatTime(seconds) {
+      return seconds.toFixed(1).replace(".", ",") + " s";
+    }
+
+    // ---------- LOGIN ----------
+    startGameBtn.addEventListener("click", () => {
+      const name = playerNameInput.value.trim();
+
+      if (!name) {
+        nameError.style.display = "block";
+        return;
+      }
+      nameError.style.display = "none";
+
+      const file = playerAvatarInput.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          currentPlayer.name = name;
+          currentPlayer.avatarDataUrl = e.target.result;
+          enterGame();
+        };
+        reader.readAsDataURL(file);
+      } else {
+        currentPlayer.name = name;
+        currentPlayer.avatarDataUrl = null;
+        enterGame();
+      }
+    });
+
+    function enterGame() {
+      // Toon speler info
+      currentPlayerNameEl.textContent = currentPlayer.name;
+      renderCurrentAvatar();
+
+      // Wissel naar gamescherm
+      loginScreen.classList.remove("active");
+      gameScreen.classList.add("active");
+
+      // Start spel
+      initGame();
+      renderHighscores();
+    }
+
+    function renderCurrentAvatar() {
+      currentAvatarEl.innerHTML = "";
+      if (currentPlayer.avatarDataUrl) {
+        const img = document.createElement("img");
+        img.src = currentPlayer.avatarDataUrl;
+        currentAvatarEl.appendChild(img);
+      } else {
+        const span = document.createElement("span");
+        span.textContent = currentPlayer.name ? currentPlayer.name.charAt(0).toUpperCase() : "🙂";
+        currentAvatarEl.appendChild(span);
+      }
+    }
+
+    // ---------- GAME LOGIC ----------
+    function initGame() {
+      // Reset state
+      score = 0;
+      elapsedTime = 0;
+      startTime = null;
+      clearInterval(timerInterval);
+      timerInterval = null;
+      lockBoard = false;
+      flippedCards = [];
+      gameMessage.textContent = "";
+      gameOverBanner.style.display = "none";
+
+      scoreDisplay.textContent = score;
+      timeDisplay.textContent = formatTime(elapsedTime);
+
+      // Bouw deck: elk symbool 2x
+      const symbols = cardImages.slice(0, PAIRS); // zekerheid
+      let deck = [];
+      let id = 0;
+
+      symbols.forEach((symbol) => {
+        deck.push({ id: id++, symbol, matched: false });
+        deck.push({ id: id++, symbol, matched: false });
+      });
+
+      deck = shuffle(deck);
+      cards = deck;
+
+      renderBoard();
+    }
+
+    function renderBoard() {
+      boardEl.innerHTML = "";
+      cards.forEach((card) => {
+        const cardEl = document.createElement("div");
+        cardEl.classList.add("card");
+        cardEl.dataset.id = card.id;
+
+        const inner = document.createElement("div");
+        inner.classList.add("card-inner");
+
+        const front = document.createElement("div");
+        front.classList.add("card-face", "card-front");
+        front.textContent = "Bitty";
+
+        const back = document.createElement("div");
+        back.classList.add("card-face", "card-back");
+
+        // Voor nu gebruiken we emoji als "plaatje"
+        const span = document.createElement("span");
+        span.textContent = card.symbol;
+        back.appendChild(span);
+
+        const glowOverlay = document.createElement("div");
+        glowOverlay.classList.add("matched-overlay");
+
+        inner.appendChild(front);
+        inner.appendChild(back);
+        inner.appendChild(glowOverlay);
+        cardEl.appendChild(inner);
+
+        cardEl.addEventListener("click", onCardClick);
+        boardEl.appendChild(cardEl);
+      });
+    }
+
+    function onCardClick(e) {
+      const cardEl = e.currentTarget;
+      const id = parseInt(cardEl.dataset.id, 10);
+      const card = cards.find((c) => c.id === id);
+
+      if (lockBoard) return;
+      if (!card) return;
+      if (card.matched) return;
+      if (flippedCards.some((c) => c.id === id)) return;
+
+      // Start timer bij eerste klik
+      if (!timerInterval) {
+        startTimer();
+      }
+
+      flipCard(cardEl);
+      flippedCards.push(card);
+
+      if (flippedCards.length === 2) {
+        checkForMatch();
+      }
+    }
+
+    function flipCard(cardEl) {
+      cardEl.classList.add("flipped");
+    }
+
+    function unflipCard(cardEl) {
+      cardEl.classList.remove("flipped");
+    }
+
+    function checkForMatch() {
+      lockBoard = true;
+
+      const [card1, card2] = flippedCards;
+      const isMatch = card1.symbol === card2.symbol;
+
+      const card1El = boardEl.querySelector(`[data-id="${card1.id}"]`);
+      const card2El = boardEl.querySelector(`[data-id="${card2.id}"]`);
+
+      if (isMatch && card1El && card2El) {
+        // Markeer matched
+        card1.matched = true;
+        card2.matched = true;
+
+        card1El.classList.add("matched");
+        card2El.classList.add("matched");
+
+        // Score +50
+        score += POINTS_PER_MATCH;
+        scoreDisplay.textContent = score;
+        gameMessage.textContent = "+50 punten voor een goed paar!";
+        highlightMessage();
+
+        // Check of alle kaarten gevonden zijn
+        const allMatched = cards.every((c) => c.matched);
+        if (allMatched) {
+          endGame();
+        } else {
+          setTimeout(() => {
+            flippedCards = [];
+            lockBoard = false;
+          }, 350);
+        }
+      } else {
+        // Geen match: terugdraaien
+        setTimeout(() => {
+          if (card1El) unflipCard(card1El);
+          if (card2El) unflipCard(card2El);
+          flippedCards = [];
+          lockBoard = false;
+        }, 700);
+      }
+    }
+
+    function highlightMessage() {
+      gameMessage.style.opacity = "1";
+      setTimeout(() => {
+        gameMessage.style.opacity = "0.7";
+      }, 600);
+    }
+
+    function startTimer() {
+      startTime = performance.now();
+      timerInterval = setInterval(() => {
+        const now = performance.now();
+        elapsedTime = (now - startTime) / 1000;
+        timeDisplay.textContent = formatTime(elapsedTime);
+      }, 100);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+
+    function endGame() {
+      stopTimer();
+      gameMessage.textContent = "🎉 Alle paren gevonden!";
+      gameOverBanner.style.display = "block";
+      gameOverBanner.textContent =
+        `Eindscore: ${score} | Tijd: ${formatTime(elapsedTime)}`;
+
+      saveHighscore();
+      renderHighscores();
+    }
+
+    // ---------- HIGHSCORES ----------
+    const HIGHSCORE_KEY = "bitty_memory_highscores_v1";
+
+    function loadHighscores() {
+      const raw = localStorage.getItem(HIGHSCORE_KEY);
+      if (!raw) return [];
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return [];
+      }
+    }
+
+    function storeHighscores(list) {
+      localStorage.setItem(HIGHSCORE_KEY, JSON.stringify(list));
+    }
+
+    function saveHighscore() {
+      const list = loadHighscores();
+
+      const entry = {
+        name: currentPlayer.name,
+        avatarDataUrl: currentPlayer.avatarDataUrl,
+        score,
+        timeSeconds: elapsedTime,
+        date: new Date().toISOString()
+      };
+
+      list.push(entry);
+
+      // Sorteren: hoogste score eerst, bij gelijke score snelste tijd
+      list.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.timeSeconds - b.timeSeconds;
+      });
+
+      // Alleen top 10 bewaren
+      const trimmed = list.slice(0, 10);
+      storeHighscores(trimmed);
+    }
+
+    function renderHighscores() {
+      const list = loadHighscores();
+      highscoreList.innerHTML = "";
+
+      if (list.length === 0) {
+        const empty = document.createElement("div");
+        empty.style.opacity = "0.7";
+        empty.style.fontSize = "12px";
+        empty.textContent = "Nog geen scores. Speel een potje om de eerste plek te claimen!";
+        highscoreList.appendChild(empty);
+        return;
+      }
+
+      list.forEach((entry, index) => {
+        const item = document.createElement("div");
+        item.classList.add("highscore-item");
+
+        const rank = document.createElement("div");
+        rank.classList.add("highscore-rank");
+        rank.textContent = index + 1;
+
+        const avatar = document.createElement("div");
+        avatar.classList.add("highscore-avatar");
+        if (entry.avatarDataUrl) {
+          const img = document.createElement("img");
+          img.src = entry.avatarDataUrl;
+          avatar.appendChild(img);
+        } else {
+          const span = document.createElement("span");
+          span.textContent = entry.name ? entry.name.charAt(0).toUpperCase() : "?";
+          avatar.appendChild(span);
+        }
+
+        const main = document.createElement("div");
+        main.classList.add("highscore-main");
+
+        const nameRow = document.createElement("div");
+        nameRow.classList.add("highscore-name");
+        nameRow.textContent = entry.name || "Onbekend";
+
+        const meta = document.createElement("div");
+        meta.classList.add("highscore-meta");
+        const timeStr = formatTime(entry.timeSeconds);
+        meta.innerHTML = `
+          Score: <strong>${entry.score}</strong> • Tijd: <strong>${timeStr}</strong>
+          <span class="tag">Bitty Memory</span>
+        `;
+
+        main.appendChild(nameRow);
+        main.appendChild(meta);
+
+        item.appendChild(rank);
+        item.appendChild(avatar);
+        item.appendChild(main);
+
+        highscoreList.appendChild(item);
+      });
+    }
+
+    clearScoresBtn.addEventListener("click", () => {
+      if (confirm("Weet je zeker dat je alle highscores wilt verwijderen?")) {
+        storeHighscores([]);
+        renderHighscores();
+      }
+    });
+
+    restartBtn.addEventListener("click", () => {
+      initGame();
+    });
+
+    // Start op loginscherm (is al 'active' in HTML)
+  </script>
+</body>
+</html>
